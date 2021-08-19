@@ -1,103 +1,13 @@
 # This is free and unencumbered software released into the public domain.
 # See https://unlicense.org/ for details.
 
-import hashlib
 import json
 import logging
 import re
 import requests
 
 from .about import __version__ as _version
-
-def calcmd5(filepath):
-    with open(filepath, 'rb') as fh:
-        return hashlib.md5(fh.read()).hexdigest()
-
-def _decode(data):
-    """
-    Normalize a "compressed" dictionary with special 'map' entry.
-
-    This format looks like a way to reduce bandwidth by avoiding repeated
-    key strings. Maybe it's a JSON standard with a built-in method to
-    decode it? But since I'm REST illiterate, we decode it manually!
-
-    For example, the following data object:
-
-        data = {
-           "244526" : [
-              "Starter Songs",
-              [
-                 134082068,
-                 134082066,
-                 134082069,
-                 134082067
-              ],
-              "1234-1234-1234-1234",
-              false,
-              null,
-              null,
-              null,
-              null,
-              1
-           ],
-           "map" : {
-              "artwork_id" : 7,
-              "description" : 6,
-              "name" : 0,
-              "public_id" : 4,
-              "sort" : 8,
-              "system_created" : 3,
-              "tracks" : 1,
-              "type" : 5,
-              "uid" : 2
-           }
-        }
-
-    will be decoded to:
-
-       data = {
-          "244526" : {
-             "name": "Starter Songs",
-             "tracks": [
-                134082068,
-                134082066,
-                134082069,
-                134082067
-             ],
-             "uid": "1234-1234-1234-1234",
-             "system_created": false,
-             "public_id": null,
-             "type": null,
-             "description": null,
-             "artwork_id": null,
-             "sort": 1
-          }
-       }
-    """
-
-    if not 'map' in data or type(data['map']) is not dict:
-        return data
-    keymap = {v: k for (k, v) in data['map'].items()}
-
-    result = {}
-    for k, v in data.items():
-        if type(v) is list:
-            result[k] = {keymap[i]: v[i] for i in range(len(v))}
-    return result
-
-def _response2json(response, log):
-    if not response.ok:
-        raise ServerError('Server returned bad status: ',
-                         response.status_code)
-    jsondata = response.json()
-    if 'message' in jsondata:
-        log.info(jsondata['message'])
-    if jsondata['result'] is False:
-        raise ValueError('Operation failed.')
-    return jsondata
-
-class ServerError(Exception):
-    pass
+from .util import *
 
 class iBroadcast(object):
     """
@@ -120,7 +30,7 @@ class iBroadcast(object):
             ServerError on problem logging in
         """
         self._log.info(f'Logging in as {username}...')
-        self.status = _response2json(requests.post(
+        self.status = response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/status",
             data=json.dumps({
                 'mode': 'status',
@@ -146,7 +56,7 @@ class iBroadcast(object):
             ServerError on problem completing the request
         """
         self._log.info('Downloading MD5 checksums...')
-        self.state = _response2json(requests.post(
+        self.state = response2json(requests.post(
             "https://sync.ibroadcast.com",
             data=f'user_id={self.user_id()}&token={self.token()}',
             headers={'Content-Type': 'application/x-www-form-urlencoded'},
@@ -165,7 +75,7 @@ class iBroadcast(object):
         self.md5 = None
 
         self._log.info('Downloading library data...')
-        self.library = _response2json(requests.post(
+        self.library = response2json(requests.post(
             "https://library.ibroadcast.com",
             data=json.dumps({
                 '_token': self.token(),
@@ -178,11 +88,11 @@ class iBroadcast(object):
             }),
             headers={'Content-Type': 'application/json'}
         ), log=self._log)
-        self.albums = _decode(self.library['library']['albums'])
-        self.artists = _decode(self.library['library']['artists'])
-        self.playlists = _decode(self.library['library']['playlists'])
-        self.tags = _decode(self.library['library']['tags'])
-        self.tracks = _decode(self.library['library']['tracks'])
+        self.albums = decode(self.library['library']['albums'])
+        self.artists = decode(self.library['library']['artists'])
+        self.playlists = decode(self.library['library']['playlists'])
+        self.tags = decode(self.library['library']['tags'])
+        self.tracks = decode(self.library['library']['tracks'])
 
     def user_id(self):
         """
@@ -238,7 +148,7 @@ class iBroadcast(object):
         self._log.info(f'Uploading {label}')
 
         with open(filepath, 'rb') as upload_file:
-            jsondata = _response2json(requests.post(
+            jsondata = response2json(requests.post(
                 "https://upload.ibroadcast.com",
                 data={
                     'user_id': self.user_id(),
@@ -289,7 +199,7 @@ class iBroadcast(object):
         Raises:
             ServerError on problem creating the tag
         """
-        jsondata = _response2json(requests.post(
+        jsondata = response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/createtag",
             data=json.dumps({
                 '_token': self.token(),
@@ -316,7 +226,7 @@ class iBroadcast(object):
         Raises:
             ServerError on problem tagging/untagging the tracks
         """
-        _response2json(requests.post(
+        response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/tagtracks",
             data=json.dumps({
                 '_token': self.token(),
@@ -349,7 +259,7 @@ class iBroadcast(object):
         """
         if mood not in ('Party', 'Dance', 'Workout', 'Relaxed', 'Chill'): mood = ''
 
-        jsondata = _response2json(requests.post(
+        jsondata = response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/createplaylist",
             data=json.dumps({
                 '_token': self.token(),
@@ -377,7 +287,7 @@ class iBroadcast(object):
         Raises:
             ServerError on problem deleting the playlist
         """
-        _response2json(requests.post(
+        response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/deleteplaylist",
             data=json.dumps({
                 '_token': self.token(),
@@ -405,7 +315,7 @@ class iBroadcast(object):
         Raises:
             ServerError on problem updating the playlist
         """
-        _response2json(requests.post(
+        response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/appendplaylist",
             data=json.dumps({
                 '_token': self.token(),
@@ -434,7 +344,7 @@ class iBroadcast(object):
         Raises:
             ServerError on problem updating the playlist
         """
-        _response2json(requests.post(
+        response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/updateplaylist",
             data=json.dumps({
                 '_token': self.token(),
@@ -459,7 +369,7 @@ class iBroadcast(object):
         Raises:
             ServerError on problem trashing the tracks
         """
-        _response2json(requests.post(
+        response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/tagtracks",
             data=json.dumps({
                 '_token': self.token(),
