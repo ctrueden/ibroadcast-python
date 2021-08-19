@@ -8,7 +8,6 @@ import re
 import requests
 
 from .about import __version__ as _version
-_client = 'ibroadcast-python'
 
 def calcmd5(filepath):
     with open(filepath, 'rb') as fh:
@@ -124,7 +123,7 @@ class iBroadcast(object):
                 'email_address': username,
                 'password': password,
                 'version': _version,
-                'client': _client,
+                'client': self._client,
                 'supported_types': 1,
             }),
             headers={'Content-Type': 'application/json'}
@@ -169,7 +168,7 @@ class iBroadcast(object):
             data=json.dumps({
                 '_token': self.token(),
                 '_userid': self.user_id(),
-                'client': _client,
+                'client': self._client,
                 'version': _version,
                 'mode': 'library',
                 'supported_types': False,
@@ -231,10 +230,10 @@ class iBroadcast(object):
                 data={
                     'user_id': self.user_id(),
                     'token': self.token(),
-                    'client': _client,
+                    'client': self._client,
                     'version': _version,
                     'file_path': filepath,
-                    'method': _client,
+                    'method': self._client,
                 },
                 files={'file': upload_file},
             ))
@@ -277,7 +276,7 @@ class iBroadcast(object):
             data=json.dumps({
                 '_token': self.token(),
                 '_userid': self.user_id(),
-                'client': _client,
+                'client': self._client,
                 'version': _version,
                 'mode': 'createtag',
                 'supported_types': False,
@@ -302,7 +301,7 @@ class iBroadcast(object):
             data=json.dumps({
                 '_token': self.token(),
                 '_userid': self.user_id(),
-                'client': _client,
+                'client': self._client,
                 'version': _version,
                 'mode': 'tagtracks',
                 'supported_types': False,
@@ -333,7 +332,7 @@ class iBroadcast(object):
             data=json.dumps({
                 '_token': self.token(),
                 '_userid': self.user_id(),
-                'client': _client,
+                'client': self._client,
                 'version': _version,
                 'mode': 'createplaylist',
                 'supported_types': False,
@@ -359,7 +358,7 @@ class iBroadcast(object):
             data=json.dumps({
                 '_token': self.token(),
                 '_userid': self.user_id(),
-                'client': _client,
+                'client': self._client,
                 'version': _version,
                 'mode': 'deleteplaylist',
                 'supported_types': False,
@@ -383,7 +382,7 @@ class iBroadcast(object):
             data=json.dumps({
                 '_token': self.token(),
                 '_userid': self.user_id(),
-                'client': _client,
+                'client': self._client,
                 'version': _version,
                 'mode': 'appendplaylist',
                 'supported_types': False,
@@ -408,7 +407,7 @@ class iBroadcast(object):
             data=json.dumps({
                 '_token': self.token(),
                 '_userid': self.user_id(),
-                'client': _client,
+                'client': self._client,
                 'version': _version,
                 'mode': 'updateplaylist',
                 'supported_types': False,
@@ -432,7 +431,7 @@ class iBroadcast(object):
             data=json.dumps({
                 '_token': self.token(),
                 '_userid': self.user_id(),
-                'client': _client,
+                'client': self._client,
                 'version': _version,
                 'mode': 'trash',
                 'supported_types': False,
