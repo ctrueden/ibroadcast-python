@@ -85,6 +85,17 @@ def _decode(data):
             result[k] = {keymap[i]: v[i] for i in range(len(v))}
     return result
 
+def _response2json(response, log):
+    if not response.ok:
+        raise ServerError('Server returned bad status: ',
+                         response.status_code)
+    jsondata = response.json()
+    if 'message' in jsondata:
+        log.info(jsondata['message'])
+    if jsondata['result'] is False:
+        raise ValueError('Operation failed.')
+    return jsondata
+
 class ServerError(Exception):
     pass
 
@@ -107,10 +118,9 @@ class iBroadcast(object):
         Raises:
             ValueError on invalid login
             ServerError on problem logging in
-
         """
         self._log.info(f'Logging in as {username}...')
-        self.status = self._jsondata(requests.post(
+        self.status = _response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/status",
             data=json.dumps({
                 'mode': 'status',
@@ -121,7 +131,7 @@ class iBroadcast(object):
                 'supported_types': 1,
             }),
             headers={'Content-Type': 'application/json'}
-        ))
+        ), log=self._log)
         if 'user' not in self.status:
             raise ValueError('Invalid login.')
 
@@ -130,23 +140,12 @@ class iBroadcast(object):
 
     def _download_md5s(self):
         self._log.info('Downloading MD5 checksums...')
-        self.state = self._jsondata(requests.post(
+        self.state = _response2json(requests.post(
             "https://sync.ibroadcast.com",
             data=f'user_id={self.user_id()}&token={self.token()}',
             headers={'Content-Type': 'application/x-www-form-urlencoded'},
-        ))
+        ), log=self._log)
         self.md5 = set(self.state['md5'])
-
-    def _jsondata(self, response):
-        if not response.ok:
-            raise ServerError('Server returned bad status: ',
-                             response.status_code)
-        jsondata = response.json()
-        if 'message' in jsondata:
-            self._log.info(jsondata['message'])
-        if jsondata['result'] is False:
-            raise ValueError('Operation failed.')
-        return jsondata
 
     def refresh(self):
         """
@@ -157,7 +156,7 @@ class iBroadcast(object):
         self.md5 = None
 
         self._log.info('Downloading library data...')
-        self.library = self._jsondata(requests.post(
+        self.library = _response2json(requests.post(
             "https://library.ibroadcast.com",
             data=json.dumps({
                 '_token': self.token(),
@@ -169,7 +168,7 @@ class iBroadcast(object):
                 'url': '//library.ibroadcast.com',
             }),
             headers={'Content-Type': 'application/json'}
-        ))
+        ), log=self._log)
         self.albums = _decode(self.library['library']['albums'])
         self.artists = _decode(self.library['library']['artists'])
         self.playlists = _decode(self.library['library']['playlists'])
@@ -219,7 +218,7 @@ class iBroadcast(object):
         self._log.info(f'Uploading {label}')
 
         with open(filepath, 'rb') as upload_file:
-            jsondata = self._jsondata(requests.post(
+            jsondata = _response2json(requests.post(
                 "https://upload.ibroadcast.com",
                 data={
                     'user_id': self.user_id(),
@@ -230,7 +229,7 @@ class iBroadcast(object):
                     'method': self._client,
                 },
                 files={'file': upload_file},
-            ))
+            ), log=self._log)
             # The Track ID is embedded in result message; extract it.
             message = jsondata['message'] if 'message' in jsondata else ''
             match = re.match('.*\((.*)\) uploaded successfully.*', message)
@@ -265,7 +264,7 @@ class iBroadcast(object):
         :param tagname: Name of the tag to create.
         :return: ID of newly created tag.
         """
-        jsondata = self._jsondata(requests.post(
+        jsondata = _response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/createtag",
             data=json.dumps({
                 '_token': self.token(),
@@ -278,7 +277,7 @@ class iBroadcast(object):
                 'url': '//api.ibroadcast.com/s/JSON/createtag',
             }),
             headers={'Content-Type': 'application/json'}
-        ))
+        ), log=self._log)
         return jsondata['id']
 
     def tagtracks(self, tagid, trackids, untag=False):
@@ -290,7 +289,7 @@ class iBroadcast(object):
         :param untag: If true, remove the tag rather than applying it.
         :return: True if the operation was successful.
         """
-        self._jsondata(requests.post(
+        _response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/tagtracks",
             data=json.dumps({
                 '_token': self.token(),
@@ -305,8 +304,7 @@ class iBroadcast(object):
                 'url': '//api.ibroadcast.com/s/JSON/tagtracks',
             }),
             headers={'Content-Type': 'application/json'}
-        ))
-        return jsondata['result']
+        ), log=self._log)
 
     def createplaylist(self, name, description='', sharable=False, mood=None):
         """
@@ -321,7 +319,7 @@ class iBroadcast(object):
         """
         if mood not in ('Party', 'Dance', 'Workout', 'Relaxed', 'Chill'): mood = ''
 
-        jsondata = self._jsondata(requests.post(
+        jsondata = _response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/createplaylist",
             data=json.dumps({
                 '_token': self.token(),
@@ -337,7 +335,7 @@ class iBroadcast(object):
                 'url': '//api.ibroadcast.com/s/JSON/createplaylist',
             }),
             headers={'Content-Type': 'application/json'}
-        ))
+        ), log=self._log)
         return jsondata['playlist_id']
 
     def deleteplaylist(self, playlistid):
@@ -347,7 +345,7 @@ class iBroadcast(object):
         :param playlistid: ID of the playlist to delete.
         :return: True if the operation was successful.
         """
-        jsondata = self._jsondata(requests.post(
+        _response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/deleteplaylist",
             data=json.dumps({
                 '_token': self.token(),
@@ -360,8 +358,7 @@ class iBroadcast(object):
                 'url': '//api.ibroadcast.com/s/JSON/deleteplaylist',
             }),
             headers={'Content-Type': 'application/json'}
-        ))
-        return jsondata['result']
+        ), log=self._log)
 
     def addtracks(self, playlistid, trackids):
         """
@@ -371,7 +368,7 @@ class iBroadcast(object):
         :param trackids: List of IDs for the tracks to be added.
         :return: True if the operation was successful.
         """
-        jsondata = self._jsondata(requests.post(
+        _response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/appendplaylist",
             data=json.dumps({
                 '_token': self.token(),
@@ -385,8 +382,7 @@ class iBroadcast(object):
                 'url': '//api.ibroadcast.com/s/JSON/appendplaylist',
             }),
             headers={'Content-Type': 'application/json'}
-        ))
-        return jsondata['result']
+        ), log=self._log)
 
     def settracks(self, playlistid, trackids):
         """
@@ -396,7 +392,7 @@ class iBroadcast(object):
         :param trackids: List of IDs for the playlist tracks.
         :return: True if the operation was successful.
         """
-        jsondata = self._jsondata(requests.post(
+        _response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/updateplaylist",
             data=json.dumps({
                 '_token': self.token(),
@@ -410,8 +406,7 @@ class iBroadcast(object):
                 'url': '//api.ibroadcast.com/s/JSON/updateplaylist',
             }),
             headers={'Content-Type': 'application/json'}
-        ))
-        return jsondata['result']
+        ), log=self._log)
 
     def trash(self, trackids):
         """
@@ -420,7 +415,7 @@ class iBroadcast(object):
         :param trackids: List of IDs for the tracks to tag.
         :return: True if the operation was successful.
         """
-        self._jsondata(requests.post(
+        _response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/tagtracks",
             data=json.dumps({
                 '_token': self.token(),
@@ -433,5 +428,4 @@ class iBroadcast(object):
                 'url': '//api.ibroadcast.com/s/JSON/tagtracks',
             }),
             headers={'Content-Type': 'application/json'}
-        ))
-        return jsondata['result']
+        ), log=self._log)
