@@ -321,12 +321,14 @@ INFO:root:Login successful - user_id: 12345
 INFO:root:Downloading library data...
 INFO:root:Checked 995 albums totaling 5951 tracks.
 .INFO:root:Checked 1790 artists totaling 5951 tracks.
+...INFO:root:Downloading MD5 checksums...
+INFO:root:Returning list of md5 checksums from server
 .INFO:root:Checked 8 playlists totaling 1691 tracks.
 .INFO:root:Checked 17 tags totaling 2208 tracks.
-.INFO:root:Checked 5951 tracks.
-.
+INFO:root:Checked 5951 tracks.
+..
 ----------------------------------------------------------------------
-Ran 5 tests in 0.012s
+Ran 10 tests in 0.567s
 
 OK
 ```
