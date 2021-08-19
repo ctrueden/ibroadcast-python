@@ -108,7 +108,7 @@ class iBroadcast(object):
 
     def __init__(self, username, password, log=None, client='ibroadcast-python'):
         self._client = client
-        self._log = log or logging.getLogger(_client)
+        self._log = log or logging.getLogger(client)
         self._login(username, password)
 
     def _login(self, username, password):
