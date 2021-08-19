@@ -30,7 +30,7 @@ setup(
     platforms='ALL',
 
     include_package_data=True,
-    test_suite='test',
+    test_suite=None,
     packages=['ibroadcast'],
 
     python_requires='>=3.6',
@@ -39,9 +39,7 @@ setup(
         'requests>=2.24.0',
     ],
 
-    tests_require=[
-        'pytest',
-    ],
+    tests_require=[],
 
     classifiers=[
         'Topic :: Multimedia :: Sound/Audio',

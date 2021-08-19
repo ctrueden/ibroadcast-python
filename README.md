@@ -303,3 +303,30 @@ File an issue in the
 ## Contributing
 
 PRs welcome! ^.~
+
+### Testing changes
+
+This project has no unit tests, but there are integration tests.
+They require a valid username and password to iBroadcast.
+All of the integration tests are read-only.
+
+```shell
+$ python tests/integration.py
+INFO:root:Please enter iBroadcast credentials:
+Username: chuckles@example.com
+Password:
+INFO:root:Logging in as chuckles@example.com...
+INFO:root:ok
+INFO:root:Login successful - user_id: 12345
+INFO:root:Downloading library data...
+INFO:root:Checked 995 albums totaling 5951 tracks.
+.INFO:root:Checked 1790 artists totaling 5951 tracks.
+.INFO:root:Checked 8 playlists totaling 1691 tracks.
+.INFO:root:Checked 17 tags totaling 2208 tracks.
+.INFO:root:Checked 5951 tracks.
+.
+----------------------------------------------------------------------
+Ran 5 tests in 0.012s
+
+OK
+```
