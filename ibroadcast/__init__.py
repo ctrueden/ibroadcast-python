@@ -139,6 +139,12 @@ class iBroadcast(object):
         self.refresh()
 
     def _download_md5s(self):
+        """
+        Download MD5 checksums for currently uploaded music files.
+
+        Raises:
+            ServerError on problem completing the request
+        """
         self._log.info('Downloading MD5 checksums...')
         self.state = _response2json(requests.post(
             "https://sync.ibroadcast.com",
@@ -150,6 +156,9 @@ class iBroadcast(object):
     def refresh(self):
         """
         Download library data: albums, artists, tracks, etc.
+
+        Raises:
+            ServerError on problem completing the request
         """
 
         # Invalidate any previously downloaded MD5 checksums.
@@ -177,13 +186,13 @@ class iBroadcast(object):
 
     def user_id(self):
         """
-        Gets the user_id for the current session.
+        Get the user_id for the current session.
         """
         return self.status['user']['id']
 
     def token(self):
         """
-        Gets the authentication token for the current session.
+        Get the authentication token for the current session.
         """
         return self.status['user']['token']
 
@@ -194,6 +203,14 @@ class iBroadcast(object):
         return [ft['extension'] for ft in self.status['supported']]
 
     def isuploaded(self, filepath):
+        """
+        Get whether a given file is already uploaded to the iBroadcast server.
+
+        :param filepath: Path to the file to check.
+
+        Raises:
+            ServerError on problem downloading remote MD5 checksums
+        """
         if not self.md5:
             self._download_md5s()
         return calcmd5(filepath) in self.md5
@@ -208,6 +225,9 @@ class iBroadcast(object):
                       this operation, or None to use the file path directly.
         :param force: Upload the file even if checksum is already present.
         :return: Track ID of the uploaded file, or None if no upload occurred.
+
+        Raises:
+            ServerError on problem completing the request
         """
         if label is None:
             label = filepath
@@ -238,6 +258,7 @@ class iBroadcast(object):
     def istagged(self, tagid, trackid):
         """
         Get whether the specified track has the given tag.
+
         :param tagid: ID of the tag in question.
         :param trackid: ID of the track in question.
         :return: True iff the track is tagged with that tag.
@@ -252,6 +273,7 @@ class iBroadcast(object):
     def gettags(self, trackid):
         """
         Get the tags for the given track.
+
         :param trackid: ID of the track in question.
         :return: List of tag IDs.
         """
@@ -263,6 +285,9 @@ class iBroadcast(object):
 
         :param tagname: Name of the tag to create.
         :return: ID of newly created tag.
+
+        Raises:
+            ServerError on problem creating the tag
         """
         jsondata = _response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/createtag",
@@ -287,7 +312,9 @@ class iBroadcast(object):
         :param tagid: ID of the tag to apply.
         :param trackids: List of IDs for the tracks to tag.
         :param untag: If true, remove the tag rather than applying it.
-        :return: True if the operation was successful.
+
+        Raises:
+            ServerError on problem tagging/untagging the tracks
         """
         _response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/tagtracks",
@@ -316,6 +343,9 @@ class iBroadcast(object):
         :param mood: Mood to use for autopopulating tracks:
                      None, Party, Dance, Workout, Relaxed, or Chill.
         :return: ID of newly created playlist.
+
+        Raises:
+            ServerError on problem creating the playlist
         """
         if mood not in ('Party', 'Dance', 'Workout', 'Relaxed', 'Chill'): mood = ''
 
@@ -343,7 +373,9 @@ class iBroadcast(object):
         Delete a playlist.
 
         :param playlistid: ID of the playlist to delete.
-        :return: True if the operation was successful.
+
+        Raises:
+            ServerError on problem deleting the playlist
         """
         _response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/deleteplaylist",
@@ -364,9 +396,14 @@ class iBroadcast(object):
         """
         Add tracks to the given playlist.
 
+        Unlike settracks, this operation will append to, not overwrite,
+        the playlist's tracks.
+
         :param playlistid: ID of the playlist to update.
         :param trackids: List of IDs for the tracks to be added.
-        :return: True if the operation was successful.
+
+        Raises:
+            ServerError on problem updating the playlist
         """
         _response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/appendplaylist",
@@ -386,11 +423,16 @@ class iBroadcast(object):
 
     def settracks(self, playlistid, trackids):
         """
-        Updates the given playlist to consist of the specified tracks.
+        Update the given playlist to consist of the specified tracks.
+
+        Unlike addtracks, this operation will overwrite, not append to,
+        the playlist's tracks.
 
         :param playlistid: ID of the playlist to update.
         :param trackids: List of IDs for the playlist tracks.
-        :return: True if the operation was successful.
+
+        Raises:
+            ServerError on problem updating the playlist
         """
         _response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/updateplaylist",
@@ -413,7 +455,9 @@ class iBroadcast(object):
         Move the given tracks to the trash.
 
         :param trackids: List of IDs for the tracks to tag.
-        :return: True if the operation was successful.
+
+        Raises:
+            ServerError on problem trashing the tracks
         """
         _response2json(requests.post(
             "https://api.ibroadcast.com/s/JSON/tagtracks",
