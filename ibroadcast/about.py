@@ -11,5 +11,5 @@ __status__ = u'Stable'
 
 __PACKAGE_TITLE__ = u'iBroadcast'
 __PACKAGE_NAME__ = u'ibroadcast'
-__PACKAGE_DESCRIPTION__ = u'iBroadcast Python client',
+__PACKAGE_DESCRIPTION__ = u'iBroadcast Python client'
 __PACKAGE_URL__ = u'https://github.com/ctrueden/ibroadcast-python'
