@@ -96,8 +96,6 @@ class iBroadcast(object):
     """
 
     def __init__(self, username, password, log=None, client='ibroadcast-python'):
-        self.username = username
-        self.password = password
         self._client = client
         self._log = log or logging.getLogger(_client)
         self._login(username, password)
@@ -111,10 +109,6 @@ class iBroadcast(object):
             ServerError on problem logging in
 
         """
-        self.username = username
-        self.password = password
-
-        # Log in.
         self._log.info(f'Logging in as {username}...')
         self.status = self._jsondata(requests.post(
             "https://api.ibroadcast.com/s/JSON/status",
