@@ -61,6 +61,23 @@ class iBroadcast(object):
             content_type='application/x-www-form-urlencoded')
         self.md5 = set(self.state['md5'])
 
+    def _jsonrequest(self, mode, url=None, **kwargs):
+        if url is None:
+            url = f'api.ibroadcast.com/s/JSON/{mode}'
+        args = {
+            '_token': self.token(),
+            '_userid': self.user_id(),
+            'client': self._client,
+            'version': self._version,
+            'mode': mode,
+            'supported_types': False,
+        }
+        args.update(kwargs)
+        args['url'] = f'//{url}'
+        return request(self._log, f'https://{url}',
+            data=json.dumps(args),
+            content_type='application/json')
+
     def refresh(self):
         """
         Download library data: albums, artists, tracks, etc.
@@ -73,18 +90,7 @@ class iBroadcast(object):
         self.md5 = None
 
         self._log.info('Downloading library data...')
-        self.library = request(self._log,
-            "https://library.ibroadcast.com",
-            data=json.dumps({
-                '_token': self.token(),
-                '_userid': self.user_id(),
-                'client': self._client,
-                'version': self._version,
-                'mode': 'library',
-                'supported_types': False,
-                'url': '//library.ibroadcast.com',
-            }),
-            content_type='application/json')
+        self.library = self._jsonrequest('library', url='library.ibroadcast.com')
         self.albums = decode(self.library['library']['albums'])
         self.artists = decode(self.library['library']['artists'])
         self.playlists = decode(self.library['library']['playlists'])
@@ -195,19 +201,7 @@ class iBroadcast(object):
         Raises:
             ServerError on problem creating the tag
         """
-        jsondata = request(self._log,
-            "https://api.ibroadcast.com/s/JSON/createtag",
-            data=json.dumps({
-                '_token': self.token(),
-                '_userid': self.user_id(),
-                'client': self._client,
-                'version': self._version,
-                'mode': 'createtag',
-                'supported_types': False,
-                'tagname': tagname,
-                'url': '//api.ibroadcast.com/s/JSON/createtag',
-            }),
-            content_type='application/json')
+        jsondata = self._jsonrequest('createtag', tagname=tagname)
         return jsondata['id']
 
     def tagtracks(self, tagid, trackids, untag=False):
@@ -221,21 +215,7 @@ class iBroadcast(object):
         Raises:
             ServerError on problem tagging/untagging the tracks
         """
-        request(self._log,
-            "https://api.ibroadcast.com/s/JSON/tagtracks",
-            data=json.dumps({
-                '_token': self.token(),
-                '_userid': self.user_id(),
-                'client': self._client,
-                'version': self._version,
-                'mode': 'tagtracks',
-                'supported_types': False,
-                'tagid': tagid,
-                'tracks': trackids,
-                'untag': untag,
-                'url': '//api.ibroadcast.com/s/JSON/tagtracks',
-            }),
-            content_type='application/json')
+        self._jsonrequest('tagtracks', tagid=tagid, tracks=trackids, untag=untag)
 
     def createplaylist(self, name, description='', sharable=False, mood=None):
         """
@@ -252,23 +232,8 @@ class iBroadcast(object):
             ServerError on problem creating the playlist
         """
         if mood not in ('Party', 'Dance', 'Workout', 'Relaxed', 'Chill'): mood = ''
-
-        jsondata = request(self._log,
-            "https://api.ibroadcast.com/s/JSON/createplaylist",
-            data=json.dumps({
-                '_token': self.token(),
-                '_userid': self.user_id(),
-                'client': self._client,
-                'version': self._version,
-                'mode': 'createplaylist',
-                'supported_types': False,
-                'name': name,
-                'description': description,
-                'make_public': sharable,
-                'mood': mood,
-                'url': '//api.ibroadcast.com/s/JSON/createplaylist',
-            }),
-            content_type='application/json')
+        jsondata = self._jsonrequest('createplaylist',
+            name=name, description=description, make_public=sharable, mood=mood)
         return jsondata['playlist_id']
 
     def deleteplaylist(self, playlistid):
@@ -280,19 +245,7 @@ class iBroadcast(object):
         Raises:
             ServerError on problem deleting the playlist
         """
-        request(self._log,
-            "https://api.ibroadcast.com/s/JSON/deleteplaylist",
-            data=json.dumps({
-                '_token': self.token(),
-                '_userid': self.user_id(),
-                'client': self._client,
-                'version': self._version,
-                'mode': 'deleteplaylist',
-                'supported_types': False,
-                'playlist': playlistid,
-                'url': '//api.ibroadcast.com/s/JSON/deleteplaylist',
-            }),
-            content_type='application/json')
+        self._jsonrequest('deleteplaylist', playlist=playlistid)
 
     def addtracks(self, playlistid, trackids):
         """
@@ -307,20 +260,7 @@ class iBroadcast(object):
         Raises:
             ServerError on problem updating the playlist
         """
-        request(self._log,
-            "https://api.ibroadcast.com/s/JSON/appendplaylist",
-            data=json.dumps({
-                '_token': self.token(),
-                '_userid': self.user_id(),
-                'client': self._client,
-                'version': self._version,
-                'mode': 'appendplaylist',
-                'supported_types': False,
-                'playlist': playlistid,
-                'tracks': trackids,
-                'url': '//api.ibroadcast.com/s/JSON/appendplaylist',
-            }),
-            content_type='application/json')
+        self._jsonrequest('appendplaylist', playlist=playlistid, tracks=trackids)
 
     def settracks(self, playlistid, trackids):
         """
@@ -335,20 +275,7 @@ class iBroadcast(object):
         Raises:
             ServerError on problem updating the playlist
         """
-        request(self._log,
-            "https://api.ibroadcast.com/s/JSON/updateplaylist",
-            data=json.dumps({
-                '_token': self.token(),
-                '_userid': self.user_id(),
-                'client': self._client,
-                'version': self._version,
-                'mode': 'updateplaylist',
-                'supported_types': False,
-                'playlist': playlistid,
-                'tracks': trackids,
-                'url': '//api.ibroadcast.com/s/JSON/updateplaylist',
-            }),
-            content_type='application/json')
+        self._jsonrequest('updateplaylist', playlist=playlistid, tracks=trackids)
 
     def trash(self, trackids):
         """
@@ -359,16 +286,4 @@ class iBroadcast(object):
         Raises:
             ServerError on problem trashing the tracks
         """
-        request(self._log,
-            "https://api.ibroadcast.com/s/JSON/tagtracks",
-            data=json.dumps({
-                '_token': self.token(),
-                '_userid': self.user_id(),
-                'client': self._client,
-                'version': self._version,
-                'mode': 'trash',
-                'supported_types': False,
-                'tracks': trackids,
-                'url': '//api.ibroadcast.com/s/JSON/tagtracks',
-            }),
-            content_type='application/json')
+        self._jsonrequest('tagtracks', tracks=trackids)
