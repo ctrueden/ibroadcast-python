@@ -140,14 +140,14 @@ Here's an example that lists the track names of a particular playlist:
 >>> def track2string(ib, track):
 ...   title = track['title']
 ...   artistid = track['artist_id']
-...   artist = ib.artists[str(artistid)]
+...   artist = ib.artist(artistid)
 ...   return f"{artist['name']} - {title}"
 ...
 >>> thumbsup = next(pl for pl in ib.playlists.values() if pl['name'] == 'Thumbs Up')
 >>> for trackid in thumbsup['tracks']:
-...   track = ib.tracks[str(trackid)]
+...   track = ib.track(trackid)
 ...   print(track2string(ib, track))
-... 
+...
 Ozzy Osbourne - I Don't Know
 ELLEGARDEN - Mr. Feather
 The Dreaming - Become Like You
@@ -171,11 +171,11 @@ Here is an example that lists all tracks tagged "favorites" from 2010 or later:
 ```python
 >>> favorite_trackids = next(tag['tracks'] for tag in ib.tags.values() if tag['name'] == 'favorites')
 >>> for trackid in favorite_trackids:
-...   track = ib.tracks[str(trackid)]
+...   track = ib.track(trackid)
 ...   year = track['year']
 ...   if year < 2010: continue
 ...   print(f"[{year}] {track2string(ib, track)}")
-... 
+...
 [2010] Bad Religion - Only Rain
 [2016] Green Day - Still Breathing
 [2012] The Offspring - Dirty Magic
@@ -197,7 +197,7 @@ Here is an example that lists all tracks tagged "favorites" from 2010 or later:
 Help on iBroadcast in module ibroadcast object:
 
 class iBroadcast(builtins.object)
- |  iBroadcast(username, password, log=None, client='ibroadcast-python')
+ |  iBroadcast(username, password, log=None, client='ibroadcast-python', version='1.1.0')
  |
  |  Class for making iBroadcast requests.
  |
@@ -205,15 +205,32 @@ class iBroadcast(builtins.object)
  |
  |  Methods defined here:
  |
- |  __init__(self, username, password, log=None, client='ibroadcast-python')
+ |  __init__(self, username, password, log=None, client='ibroadcast-python', version='1.1.0')
  |      Initialize self.  See help(type(self)) for accurate signature.
  |
  |  addtracks(self, playlistid, trackids)
  |      Add tracks to the given playlist.
  |
+ |      Unlike settracks, this operation will append to, not overwrite,
+ |      the playlist's tracks.
+ |
  |      :param playlistid: ID of the playlist to update.
  |      :param trackids: List of IDs for the tracks to be added.
- |      :return: True if the operation was successful.
+ |
+ |      Raises:
+ |          ServerError on problem updating the playlist
+ |
+ |  album(self, albumid)
+ |      Get the album object with the given ID.
+ |
+ |      :param albumid: ID of the album to retrieve.
+ |      :return: The album object.
+ |
+ |  artist(self, artistid)
+ |      Get the artist object with the given ID.
+ |
+ |      :param artistid: ID of the artist to retrieve.
+ |      :return: The artist object.
  |
  |  createplaylist(self, name, description='', sharable=False, mood=None)
  |      Create a playlist.
@@ -225,43 +242,79 @@ class iBroadcast(builtins.object)
  |                   None, Party, Dance, Workout, Relaxed, or Chill.
  |      :return: ID of newly created playlist.
  |
+ |      Raises:
+ |          ServerError on problem creating the playlist
+ |
  |  createtag(self, tagname)
  |      Create a tag.
  |
  |      :param tagname: Name of the tag to create.
  |      :return: ID of newly created tag.
  |
+ |      Raises:
+ |          ServerError on problem creating the tag
+ |
  |  deleteplaylist(self, playlistid)
  |      Delete a playlist.
  |
  |      :param playlistid: ID of the playlist to delete.
- |      :return: True if the operation was successful.
+ |
+ |      Raises:
+ |          ServerError on problem deleting the playlist
  |
  |  extensions(self)
  |      Get file extensions for supported audio formats.
  |
  |  gettags(self, trackid)
  |      Get the tags for the given track.
+ |
  |      :param trackid: ID of the track in question.
  |      :return: List of tag IDs.
  |
  |  istagged(self, tagid, trackid)
  |      Get whether the specified track has the given tag.
+ |
  |      :param tagid: ID of the tag in question.
  |      :param trackid: ID of the track in question.
  |      :return: True iff the track is tagged with that tag.
  |
  |  isuploaded(self, filepath)
+ |      Get whether a given file is already uploaded to the iBroadcast server.
+ |
+ |      :param filepath: Path to the file to check.
+ |
+ |      Raises:
+ |          ServerError on problem downloading remote MD5 checksums
+ |
+ |  playlist(self, playlistid)
+ |      Get the playlist object with the given ID.
+ |
+ |      :param playlistid: ID of the playlist to retrieve.
+ |      :return: The playlist object.
  |
  |  refresh(self)
  |      Download library data: albums, artists, tracks, etc.
  |
+ |      Raises:
+ |          ServerError on problem completing the request
+ |
  |  settracks(self, playlistid, trackids)
- |      Updates the given playlist to consist of the specified tracks.
+ |      Update the given playlist to consist of the specified tracks.
+ |
+ |      Unlike addtracks, this operation will overwrite, not append to,
+ |      the playlist's tracks.
  |
  |      :param playlistid: ID of the playlist to update.
  |      :param trackids: List of IDs for the playlist tracks.
- |      :return: True if the operation was successful.
+ |
+ |      Raises:
+ |          ServerError on problem updating the playlist
+ |
+ |  tag(self, tagid)
+ |      Get the tag object with the given ID.
+ |
+ |      :param tagid: ID of the tag to retrieve.
+ |      :return: The tag object.
  |
  |  tagtracks(self, tagid, trackids, untag=False)
  |      Apply or remove the given tag to the specified tracks.
@@ -269,16 +322,27 @@ class iBroadcast(builtins.object)
  |      :param tagid: ID of the tag to apply.
  |      :param trackids: List of IDs for the tracks to tag.
  |      :param untag: If true, remove the tag rather than applying it.
- |      :return: True if the operation was successful.
+ |
+ |      Raises:
+ |          ServerError on problem tagging/untagging the tracks
  |
  |  token(self)
- |      Gets the authentication token for the current session.
+ |      Get the authentication token for the current session.
+ |
+ |  track(self, trackid)
+ |      Get the track object with the given ID.
+ |
+ |      :param trackid: ID of the track to retrieve.
+ |      :return: The track object.
  |
  |  trash(self, trackids)
  |      Move the given tracks to the trash.
  |
  |      :param trackids: List of IDs for the tracks to tag.
- |      :return: True if the operation was successful.
+ |
+ |      Raises:
+ |          ServerError on problem trashing the tracks
+ |
  |
  |  upload(self, filepath, label=None, force=False)
  |      Upload the given file to iBroadcast, if it isn't there already.
@@ -290,9 +354,11 @@ class iBroadcast(builtins.object)
  |      :param force: Upload the file even if checksum is already present.
  |      :return: Track ID of the uploaded file, or None if no upload occurred.
  |
- |  user_id(self)
- |      Gets the user_id for the current session.
+ |      Raises:
+ |          ServerError on problem completing the request
  |
+ |  user_id(self)
+ |      Get the user_id for the current session.
 ```
 
 ## Getting help

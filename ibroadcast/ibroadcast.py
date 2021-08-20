@@ -164,6 +164,51 @@ class iBroadcast(object):
             match = re.match('.*\((.*)\) uploaded successfully.*', message)
             return None if match is None else match.group(1)
 
+    def album(self, albumid):
+        """
+        Get the album object with the given ID.
+
+        :param albumid: ID of the album to retrieve.
+        :return: The album object.
+        """
+        return self.albums[str(albumid)]
+
+    def artist(self, artistid):
+        """
+        Get the artist object with the given ID.
+
+        :param artistid: ID of the artist to retrieve.
+        :return: The artist object.
+        """
+        return self.artists[str(artistid)]
+
+    def playlist(self, playlistid):
+        """
+        Get the playlist object with the given ID.
+
+        :param playlistid: ID of the playlist to retrieve.
+        :return: The playlist object.
+        """
+        return self.playlists[str(playlistid)]
+
+    def tag(self, tagid):
+        """
+        Get the tag object with the given ID.
+
+        :param tagid: ID of the tag to retrieve.
+        :return: The tag object.
+        """
+        return self.tags[str(tagid)]
+
+    def track(self, trackid):
+        """
+        Get the track object with the given ID.
+
+        :param trackid: ID of the track to retrieve.
+        :return: The track object.
+        """
+        return self.tracks[str(trackid)]
+
     def istagged(self, tagid, trackid):
         """
         Get whether the specified track has the given tag.

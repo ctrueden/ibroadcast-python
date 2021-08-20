@@ -71,10 +71,10 @@ class TestEverything(unittest.TestCase):
             trackcount += 1
             trackid = int(trackid) # dict key from json is a string
             albumid = track['album_id']
-            album = ib.albums[str(albumid)]
+            album = ib.album(albumid)
             self.assertIn(trackid, album['tracks'])
             artistid = track['artist_id']
-            artist = ib.artists[str(artistid)]
+            artist = ib.artist(artistid)
             # NB: In my personal library, I have one track whose artist_id points
             # to an artist whose tracks field does not contain that track.
             #self.assertIn(trackid, artist['tracks'])
