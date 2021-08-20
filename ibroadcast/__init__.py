@@ -5,7 +5,7 @@ import json
 import logging
 import re
 
-from .about import __version__ as _version
+from .about import __version__
 from .util import *
 
 class iBroadcast(object):
@@ -15,8 +15,9 @@ class iBroadcast(object):
     Adapted from ibroadcast-uploader.py at <https://project.ibroadcast.com/>.
     """
 
-    def __init__(self, username, password, log=None, client='ibroadcast-python'):
+    def __init__(self, username, password, log=None, client='ibroadcast-python', version=__version__):
         self._client = client
+        self._version = version
         self._log = log or logging.getLogger(client)
         self._login(username, password)
 
@@ -35,7 +36,7 @@ class iBroadcast(object):
                 'mode': 'status',
                 'email_address': username,
                 'password': password,
-                'version': _version,
+                'version': self._version,
                 'client': self._client,
                 'supported_types': 1,
             }),
@@ -78,7 +79,7 @@ class iBroadcast(object):
                 '_token': self.token(),
                 '_userid': self.user_id(),
                 'client': self._client,
-                'version': _version,
+                'version': self._version,
                 'mode': 'library',
                 'supported_types': False,
                 'url': '//library.ibroadcast.com',
@@ -150,7 +151,7 @@ class iBroadcast(object):
                     'user_id': self.user_id(),
                     'token': self.token(),
                     'client': self._client,
-                    'version': _version,
+                    'version': self._version,
                     'file_path': filepath,
                     'method': self._client,
                 },
@@ -200,7 +201,7 @@ class iBroadcast(object):
                 '_token': self.token(),
                 '_userid': self.user_id(),
                 'client': self._client,
-                'version': _version,
+                'version': self._version,
                 'mode': 'createtag',
                 'supported_types': False,
                 'tagname': tagname,
@@ -226,7 +227,7 @@ class iBroadcast(object):
                 '_token': self.token(),
                 '_userid': self.user_id(),
                 'client': self._client,
-                'version': _version,
+                'version': self._version,
                 'mode': 'tagtracks',
                 'supported_types': False,
                 'tagid': tagid,
@@ -258,7 +259,7 @@ class iBroadcast(object):
                 '_token': self.token(),
                 '_userid': self.user_id(),
                 'client': self._client,
-                'version': _version,
+                'version': self._version,
                 'mode': 'createplaylist',
                 'supported_types': False,
                 'name': name,
@@ -285,7 +286,7 @@ class iBroadcast(object):
                 '_token': self.token(),
                 '_userid': self.user_id(),
                 'client': self._client,
-                'version': _version,
+                'version': self._version,
                 'mode': 'deleteplaylist',
                 'supported_types': False,
                 'playlist': playlistid,
@@ -312,7 +313,7 @@ class iBroadcast(object):
                 '_token': self.token(),
                 '_userid': self.user_id(),
                 'client': self._client,
-                'version': _version,
+                'version': self._version,
                 'mode': 'appendplaylist',
                 'supported_types': False,
                 'playlist': playlistid,
@@ -340,7 +341,7 @@ class iBroadcast(object):
                 '_token': self.token(),
                 '_userid': self.user_id(),
                 'client': self._client,
-                'version': _version,
+                'version': self._version,
                 'mode': 'updateplaylist',
                 'supported_types': False,
                 'playlist': playlistid,
@@ -364,7 +365,7 @@ class iBroadcast(object):
                 '_token': self.token(),
                 '_userid': self.user_id(),
                 'client': self._client,
-                'version': _version,
+                'version': self._version,
                 'mode': 'trash',
                 'supported_types': False,
                 'tracks': trackids,
