@@ -328,4 +328,4 @@ class iBroadcast(object):
         Raises:
             ServerError on problem trashing the tracks
         """
-        self._jsonrequest('tagtracks', tracks=trackids)
+        self._jsonrequest('trash', tracks=trackids)
