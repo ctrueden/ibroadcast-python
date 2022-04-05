@@ -364,7 +364,7 @@ class iBroadcast(builtins.object)
 ## Getting help
 
 File an issue in the
-[issue tracker](https://github.com/ctrueden/ibroadcast-python).
+[issue tracker](https://github.com/ctrueden/ibroadcast-python/issues).
 
 ## Contributing
 
