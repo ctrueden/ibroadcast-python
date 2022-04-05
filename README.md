@@ -16,7 +16,7 @@ pip install ibroadcast
 
 To install the latest development version from source:
 ```
-git clone git://github.com/ctrueden/ibroadcast-python
+git clone https://github.com/ctrueden/ibroadcast-python
 cd ibroadcast-python
 pip install -e .
 ```
