@@ -72,7 +72,14 @@ def decode(data):
 
     if not 'map' in data or type(data['map']) is not dict:
         return data
-    keymap = {v: k for (k, v) in data['map'].items()}
+
+    # NB: Lately iBroadcast's map object includes an entry:
+    #
+    #   'artists_additional_map': {'artist_id': 0, 'phrase': 1, 'type': 2},
+    #
+    # Which is not immediately clear to me how to handle.
+    # So for now, we ignore it (and similar) with an if clause.
+    keymap = {v: k for (k, v) in data['map'].items() if not isinstance(v, dict)}
 
     result = {}
     for k, v in data.items():
