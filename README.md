@@ -1,7 +1,8 @@
 # iBroadcast Python client
 
-This Python package provides a client for working with your
-[iBroadcast](https://www.ibroadcast.com/) music collection.
+This Python package provides a client for working with
+[iBroadcast](https://www.ibroadcast.com/) music collections via the
+[iBroadcast REST API](https://help.ibroadcast.com/en/developer/api).
 
 ## Setup
 
@@ -23,16 +24,76 @@ pip install -e .
 
 ## Usage
 
-### Connect
+### Authentication
 
-To connect to iBroadcast, create an `ibroadcast.iBroadcast` object with your
-login credentials:
+This library uses OAuth 2 for authentication. You will need a `client_id` from
+iBroadcast (see [Creating an App](https://help.ibroadcast.com/en/developer/authentication)).
+
+#### Device Code Flow (recommended for CLI apps)
 
 ```python
 >>> import ibroadcast
->>> username = 'chuckles@example.com'
->>> password = 'HappyClown123'
->>> ib = ibroadcast.iBroadcast(username, password)
+>>> ib = ibroadcast.from_device_code(
+...     client_id='your_client_id',
+...     scopes=['user.library:read', 'user.library:write', 'user.upload'],
+... )
+To authorize, visit: https://oauth.ibroadcast.com/device
+And enter code: ABCD-1234
+
+Waiting for authorization...
+```
+
+#### Authorization Code Flow (for apps with a browser redirect)
+
+```python
+>>> import ibroadcast
+>>> # Step 1: Generate PKCE verifier and challenge
+>>> verifier = ibroadcast.generate_code_verifier()
+>>> challenge = ibroadcast.generate_code_challenge(verifier)
+>>> # Step 2: Build the authorization URL and direct the user to it
+>>> url = ibroadcast.build_authorize_url(
+...     client_id='your_client_id',
+...     state='random_state_string',
+...     code_challenge=challenge,
+...     scopes=['user.library:read', 'user.library:write'],
+...     redirect_uri='https://your-app.com/callback',
+... )
+>>> # Step 3: After user authorizes, exchange the code
+>>> ib = ibroadcast.from_auth_code(
+...     client_id='your_client_id',
+...     code='authorization_code_from_redirect',
+...     redirect_uri='https://your-app.com/callback',
+...     code_verifier=verifier,
+... )
+```
+
+#### Using existing tokens
+
+```python
+>>> import ibroadcast
+>>> ib = ibroadcast.iBroadcast(
+...     access_token='your_access_token',
+...     refresh_token='your_refresh_token',
+...     client_id='your_client_id',
+... )
+```
+
+#### Saving and restoring tokens
+
+```python
+>>> # Save tokens for later use
+>>> token_dict = ib.token_set.to_dict()
+>>> # ... persist token_dict to file ...
+>>> # Restore from saved tokens
+>>> ib = ibroadcast.from_token_set(token_dict, client_id='your_client_id')
+```
+
+### Download library data
+
+After authenticating, download your library data:
+
+```python
+>>> ib.refresh()
 ```
 
 ### Query tracks
@@ -197,168 +258,81 @@ Here is an example that lists all tracks tagged "favorites" from 2010 or later:
 Help on iBroadcast in module ibroadcast object:
 
 class iBroadcast(builtins.object)
- |  iBroadcast(username, password, log=None, client='ibroadcast-python', version='1.1.0')
+ |  iBroadcast(access_token=None, refresh_token=None, client_id=None,
+ |      token_refreshed_callback=None, client='ibroadcast-python',
+ |      version='2.0.0', device_name=None, log=None)
  |
  |  Class for making iBroadcast requests.
  |
- |  Adapted from ibroadcast-uploader.py at <https://project.ibroadcast.com/>.
+ |  Class methods:
+ |
+ |  from_device_code(client_id, scopes, on_device_code=None, **kwargs)
+ |      Authenticate via the OAuth 2 Device Code Flow.
+ |
+ |  from_auth_code(client_id, code, redirect_uri, code_verifier, **kwargs)
+ |      Authenticate via the OAuth 2 Authorization Code Flow.
+ |
+ |  from_token_set(token_set, client_id=None, **kwargs)
+ |      Create an instance from a previously saved TokenSet.
  |
  |  Methods defined here:
- |
- |  __init__(self, username, password, log=None, client='ibroadcast-python', version='1.1.0')
- |      Initialize self.  See help(type(self)) for accurate signature.
  |
  |  addtracks(self, playlistid, trackids)
  |      Add tracks to the given playlist.
  |
- |      Unlike settracks, this operation will append to, not overwrite,
- |      the playlist's tracks.
- |
- |      :param playlistid: ID of the playlist to update.
- |      :param trackids: List of IDs for the tracks to be added.
- |
- |      Raises:
- |          ServerError on problem updating the playlist
- |
  |  album(self, albumid)
  |      Get the album object with the given ID.
- |
- |      :param albumid: ID of the album to retrieve.
- |      :return: The album object.
  |
  |  artist(self, artistid)
  |      Get the artist object with the given ID.
  |
- |      :param artistid: ID of the artist to retrieve.
- |      :return: The artist object.
- |
  |  createplaylist(self, name, description='', sharable=False, mood=None)
  |      Create a playlist.
- |
- |      :param name: Name of the playlist to create.
- |      :param description: Description of the playlist.
- |      :param sharable: Whether to make the playlist sharable and publicly viewable.
- |      :param mood: Mood to use for autopopulating tracks:
- |                   None, Party, Dance, Workout, Relaxed, or Chill.
- |      :return: ID of newly created playlist.
- |
- |      Raises:
- |          ServerError on problem creating the playlist
  |
  |  createtag(self, tagname)
  |      Create a tag.
  |
- |      :param tagname: Name of the tag to create.
- |      :return: ID of newly created tag.
- |
- |      Raises:
- |          ServerError on problem creating the tag
- |
  |  deleteplaylist(self, playlistid)
  |      Delete a playlist.
- |
- |      :param playlistid: ID of the playlist to delete.
- |
- |      Raises:
- |          ServerError on problem deleting the playlist
  |
  |  extensions(self)
  |      Get file extensions for supported audio formats.
  |
+ |  get_status(self)
+ |      Fetch user status/info from the API.
+ |
  |  gettags(self, trackid)
  |      Get the tags for the given track.
- |
- |      :param trackid: ID of the track in question.
- |      :return: List of tag IDs.
  |
  |  istagged(self, tagid, trackid)
  |      Get whether the specified track has the given tag.
  |
- |      :param tagid: ID of the tag in question.
- |      :param trackid: ID of the track in question.
- |      :return: True iff the track is tagged with that tag.
- |
  |  isuploaded(self, filepath)
  |      Get whether a given file is already uploaded to the iBroadcast server.
- |
- |      :param filepath: Path to the file to check.
- |
- |      Raises:
- |          ServerError on problem downloading remote MD5 checksums
  |
  |  playlist(self, playlistid)
  |      Get the playlist object with the given ID.
  |
- |      :param playlistid: ID of the playlist to retrieve.
- |      :return: The playlist object.
- |
  |  refresh(self)
  |      Download library data: albums, artists, tracks, etc.
- |
- |      Raises:
- |          ServerError on problem completing the request
  |
  |  settracks(self, playlistid, trackids)
  |      Update the given playlist to consist of the specified tracks.
  |
- |      Unlike addtracks, this operation will overwrite, not append to,
- |      the playlist's tracks.
- |
- |      :param playlistid: ID of the playlist to update.
- |      :param trackids: List of IDs for the playlist tracks.
- |
- |      Raises:
- |          ServerError on problem updating the playlist
- |
  |  tag(self, tagid)
  |      Get the tag object with the given ID.
- |
- |      :param tagid: ID of the tag to retrieve.
- |      :return: The tag object.
  |
  |  tagtracks(self, tagid, trackids, untag=False)
  |      Apply or remove the given tag to the specified tracks.
  |
- |      :param tagid: ID of the tag to apply.
- |      :param trackids: List of IDs for the tracks to tag.
- |      :param untag: If true, remove the tag rather than applying it.
- |
- |      Raises:
- |          ServerError on problem tagging/untagging the tracks
- |
- |  token(self)
- |      Get the authentication token for the current session.
- |
  |  track(self, trackid)
  |      Get the track object with the given ID.
- |
- |      :param trackid: ID of the track to retrieve.
- |      :return: The track object.
  |
  |  trash(self, trackids)
  |      Move the given tracks to the trash.
  |
- |      :param trackids: List of IDs for the tracks to tag.
- |
- |      Raises:
- |          ServerError on problem trashing the tracks
- |
- |
  |  upload(self, filepath, label=None, force=False)
  |      Upload the given file to iBroadcast, if it isn't there already.
- |
- |      :param filepath: Path to the file for upload.
- |      :param label: Human-readable file string (e.g., without problematic
- |                    special characters) to use when logging messages about
- |                    this operation, or None to use the file path directly.
- |      :param force: Upload the file even if checksum is already present.
- |      :return: Track ID of the uploaded file, or None if no upload occurred.
- |
- |      Raises:
- |          ServerError on problem completing the request
- |
- |  user_id(self)
- |      Get the user_id for the current session.
 ```
 
 ## Getting help
@@ -373,17 +347,17 @@ PRs welcome! ^.~
 ### Testing changes
 
 This project has no unit tests, but there are integration tests.
-They require a valid username and password to iBroadcast.
+They require a valid OAuth 2 access token or client ID for iBroadcast.
 All of the integration tests are read-only.
 
 ```shell
-$ python tests/integration.py
-INFO:root:Please enter iBroadcast credentials:
-Username: chuckles@example.com
-Password:
-INFO:root:Logging in as chuckles@example.com...
-INFO:root:ok
-INFO:root:Login successful - user_id: 12345
+$ IBROADCAST_CLIENT_ID=your_client_id uv run tests/integration.py
+INFO:root:iBroadcast integration tests
+
+To authorize, visit: https://oauth.ibroadcast.com/device
+And enter code: ABCD-1234
+
+Waiting for authorization...
 INFO:root:Downloading library data...
 INFO:root:Checked 995 albums totaling 5951 tracks.
 .INFO:root:Checked 1790 artists totaling 5951 tracks.
@@ -397,4 +371,10 @@ INFO:root:Checked 5951 tracks.
 Ran 10 tests in 0.567s
 
 OK
+```
+
+Or with an existing access token:
+
+```shell
+$ IBROADCAST_ACCESS_TOKEN=your_token uv run tests/integration.py
 ```

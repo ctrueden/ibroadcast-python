@@ -1,5 +1,5 @@
-import getpass
 import logging
+import os
 import re
 import sys
 import unittest
@@ -8,17 +8,36 @@ import ibroadcast
 
 log = logging.getLogger()
 log.setLevel(logging.INFO)
-logging.info(
-    "Please enter iBroadcast credentials:"
-)  # HACK: make subsequent log.info work.
+logging.info("iBroadcast integration tests")
 
-if sys.stdin.isatty():
-    username = input("Username: ")
-    password = getpass.getpass("Password: ")
+# Authenticate via device code flow.
+# Requires IBROADCAST_CLIENT_ID environment variable.
+client_id = os.environ.get("IBROADCAST_CLIENT_ID")
+access_token = os.environ.get("IBROADCAST_ACCESS_TOKEN")
+refresh_token = os.environ.get("IBROADCAST_REFRESH_TOKEN")
+
+if access_token:
+    # Use existing tokens directly.
+    ib = ibroadcast.iBroadcast(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        client_id=client_id,
+        log=log,
+    )
+elif client_id:
+    # Run device code flow interactively.
+    scopes = ["user.library:read", "user.library:write", "user.upload"]
+    ib = ibroadcast.from_device_code(
+        client_id=client_id,
+        scopes=scopes,
+        log=log,
+    )
 else:
-    username = sys.stdin.readline().rstrip()
-    password = sys.stdin.readline().rstrip()
-ib = ibroadcast.iBroadcast(username, password, log)
+    print("Set IBROADCAST_CLIENT_ID or IBROADCAST_ACCESS_TOKEN to run tests.")
+    sys.exit(1)
+
+# Download library data.
+ib.refresh()
 
 
 class TestEverything(unittest.TestCase):
@@ -114,14 +133,9 @@ class TestEverything(unittest.TestCase):
         for md5sum in ib.md5:
             self.assertTrue(hexpat.match(md5sum))
 
-    def test_user_id(self):
-        self.assertGreater(int(ib.user_id()), 0)
-
-    def test_token(self):
-        uuidpat = re.compile(
-            "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-        )
-        self.assertTrue(uuidpat.match(ib.token()))
+    def test_status(self):
+        status = ib.get_status()
+        self.assertIn("user", status)
 
     def test_extensions(self):
         # fmt: off
@@ -143,6 +157,10 @@ class TestEverything(unittest.TestCase):
                 track_tags = ib.gettags(trackid)
                 self.assertIn(tagid, track_tags)
                 self.assertTrue(ib.istagged(tagid, trackid))
+
+    def test_access_token(self):
+        self.assertIsNotNone(ib.access_token)
+        self.assertGreater(len(ib.access_token), 0)
 
 
 if __name__ == "__main__":

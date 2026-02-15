@@ -91,18 +91,8 @@ def decode(data):
     return result
 
 
-def request(log, url, data, content_type=None, files=None):
-    # TODO: Use kwargs properly here.
-    if content_type and files:
-        response = requests.post(
-            url, data=data, files=files, headers={"Content-Type": content_type}
-        )
-    elif content_type:
-        response = requests.post(url, data=data, headers={"Content-Type": content_type})
-    elif files:
-        response = requests.post(url, data=data, files=files)
-    else:
-        response = requests.post(url, data=data)
+def request(log, url, data, headers=None, files=None):
+    response = requests.post(url, data=data, headers=headers, files=files)
 
     if not response.ok:
         raise ServerError("Server returned bad status: ", response.status_code)

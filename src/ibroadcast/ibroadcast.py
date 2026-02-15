@@ -1,95 +1,208 @@
+# This is free and unencumbered software released into the public domain.
+# See https://unlicense.org/ for details.
+
 import json
 import logging
 import re
 
-from . import util
+from . import oauth, util
+
+
+def from_device_code(client_id, scopes, on_device_code=None, **kwargs):
+    """
+    Authenticate via the OAuth 2 Device Code Flow.
+
+    :param client_id: OAuth 2 client ID.
+    :param scopes: List of OAuth scopes to request.
+    :param on_device_code: Callback receiving (user_code, verification_uri,
+        verification_uri_complete) so the caller can display them. If None,
+        prints to stdout.
+    :param kwargs: Additional keyword arguments passed to the constructor.
+    :return: An authenticated iBroadcast instance.
+    """
+    dc = oauth.device_code_request(client_id, scopes)
+
+    if on_device_code:
+        on_device_code(
+            dc["user_code"],
+            dc["verification_uri"],
+            dc.get("verification_uri_complete", ""),
+        )
+    else:
+        print(f"\nTo authorize, visit: {dc['verification_uri']}")
+        print(f"And enter code: {dc['user_code']}")
+        if "verification_uri_complete" in dc:
+            print(f"\nOr visit: {dc['verification_uri_complete']}")
+        print("\nWaiting for authorization...")
+
+    token_set = oauth.poll_for_token(
+        client_id, dc["device_code"], dc.get("interval", 5)
+    )
+
+    instance = iBroadcast(
+        access_token=token_set.access_token,
+        refresh_token=token_set.refresh_token,
+        client_id=client_id,
+        **kwargs,
+    )
+    instance.token_set = token_set
+    return instance
+
+
+def from_auth_code(client_id, code, redirect_uri, code_verifier, **kwargs):
+    """
+    Authenticate via the OAuth 2 Authorization Code Flow.
+
+    :param client_id: OAuth 2 client ID.
+    :param code: Authorization code received from the redirect.
+    :param redirect_uri: The redirect URI used in the authorization request.
+    :param code_verifier: PKCE code verifier.
+    :param kwargs: Additional keyword arguments passed to the constructor.
+    :return: An authenticated iBroadcast instance.
+    """
+    token_set = oauth.exchange_auth_code(client_id, code, redirect_uri, code_verifier)
+
+    instance = iBroadcast(
+        access_token=token_set.access_token,
+        refresh_token=token_set.refresh_token,
+        client_id=client_id,
+        **kwargs,
+    )
+    instance.token_set = token_set
+    return instance
+
+
+def from_token_set(token_set, client_id=None, **kwargs):
+    """
+    Create an instance from a previously saved TokenSet.
+
+    :param token_set: A TokenSet (or dict with token fields).
+    :param client_id: OAuth 2 client ID (needed for token refresh).
+    :param kwargs: Additional keyword arguments passed to the constructor.
+    :return: An iBroadcast instance.
+    """
+    if isinstance(token_set, dict):
+        token_set = oauth.TokenSet.from_dict(token_set)
+
+    instance = iBroadcast(
+        access_token=token_set.access_token,
+        refresh_token=token_set.refresh_token,
+        client_id=client_id,
+        **kwargs,
+    )
+    instance.token_set = token_set
+    return instance
 
 
 class iBroadcast(object):
     """
     Class for making iBroadcast requests.
-
-    Adapted from ibroadcast-uploader.py at <https://project.ibroadcast.com/>.
     """
 
     def __init__(
         self,
-        username,
-        password,
-        log=None,
+        access_token=None,
+        refresh_token=None,
+        client_id=None,
+        token_refreshed_callback=None,
         client=None,
         version=None,
+        device_name=None,
+        log=None,
     ):
+        """
+        Create an iBroadcast client with OAuth 2 tokens.
+
+        :param access_token: OAuth 2 access token.
+        :param refresh_token: OAuth 2 refresh token (for automatic refresh).
+        :param client_id: OAuth 2 client ID (needed for token refresh).
+        :param token_refreshed_callback: Called with a new TokenSet when
+            tokens are automatically refreshed, so callers can persist them.
+        :param client: Client identifier string.
+        :param version: Client version string.
+        :param device_name: Device name sent with API requests.
+        :param log: Logger instance.
+        """
+        self._access_token = access_token
+        self._refresh_token = refresh_token
+        self._client_id = client_id
+        self._token_refreshed_callback = token_refreshed_callback
         self._client = client or "ibroadcast-python"
         self._version = version or util.version
+        self._device_name = device_name or client
+        self._user_agent = f"{client}/{version}"
         self._log = log or logging.getLogger(client)
-        self._login(username, password)
 
-    def _login(self, username, password):
-        """
-        Login to iBroadcast with the given username and password
+        # Library data, populated by refresh().
+        self.library = None
+        self.albums = {}
+        self.artists = {}
+        self.playlists = {}
+        self.tags = {}
+        self.tracks = {}
+        self.md5 = None
+        self.status = None
 
-        Raises:
-            ValueError on invalid login
-            ServerError on problem logging in
-        """
-        self._log.info(f"Logging in as {username}...")
-        self.status = util.request(
-            self._log,
-            "https://api.ibroadcast.com/s/JSON/status",
-            data=json.dumps(
-                {
-                    "mode": "status",
-                    "email_address": username,
-                    "password": password,
-                    "version": self._version,
-                    "client": self._client,
-                    "supported_types": 1,
-                }
-            ),
-            content_type="application/json",
+    @property
+    def access_token(self):
+        """Get the current OAuth 2 access token."""
+        return self._access_token
+
+    def _auth_headers(self):
+        """Build the common headers for authenticated API requests."""
+        return {
+            "Content-Type": "application/json",
+            "User-Agent": self._user_agent,
+            "Authorization": f"Bearer {self._access_token}",
+        }
+
+    def _request_body(self, mode, **kwargs):
+        """Build the common JSON body for API requests."""
+        args = {
+            "client": self._client,
+            "version": self._version,
+            "device_name": self._device_name,
+            "user_agent": self._user_agent,
+            "mode": mode,
+        }
+        args.update(kwargs)
+        return args
+
+    def _refresh(self):
+        """Refresh the access token using the refresh token."""
+        self._log.info("Refreshing access token...")
+        token_set = oauth.refresh_access_token(
+            self._client_id,
+            self._refresh_token,
         )
-        if "user" not in self.status:
-            raise ValueError("Invalid login.")
-
-        self._log.info(f"Login successful - user_id: {self.user_id()}")
-        self.refresh()
-
-    def _download_md5s(self):
-        """
-        Download MD5 checksums for currently uploaded music files.
-
-        Raises:
-            ServerError on problem completing the request
-        """
-        self._log.info("Downloading MD5 checksums...")
-        self.state = util.request(
-            self._log,
-            "https://sync.ibroadcast.com",
-            data=f"user_id={self.user_id()}&token={self.token()}",
-            content_type="application/x-www-form-urlencoded",
-        )
-        self.md5 = set(self.state["md5"])
+        self._access_token = token_set.access_token
+        self._refresh_token = token_set.refresh_token
+        self.token_set = token_set
+        if self._token_refreshed_callback:
+            self._token_refreshed_callback(token_set)
 
     def _jsonrequest(self, mode, url=None, **kwargs):
         if url is None:
-            url = f"api.ibroadcast.com/s/JSON/{mode}"
-        args = {
-            "_token": self.token(),
-            "_userid": self.user_id(),
-            "client": self._client,
-            "version": self._version,
-            "mode": mode,
-            "supported_types": False,
-        }
-        args.update(kwargs)
-        args["url"] = f"//{url}"
-        return util.request(
-            self._log,
-            f"https://{url}",
-            data=json.dumps(args),
-            content_type="application/json",
+            url = f"api.ibroadcast.com/{mode}"
+        headers = self._auth_headers()
+        args = self._request_body(mode, **kwargs)
+        result = util.request(
+            self._log, f"https://{url}", data=json.dumps(args), headers=headers
         )
+
+        # Handle token expiry: if authenticated==false, try refresh.
+        if (
+            not result.get("authenticated", True)
+            and self._refresh_token
+            and self._client_id
+        ):
+            self._refresh()
+            headers["Authorization"] = f"Bearer {self._access_token}"
+            result = util.request(
+                self._log, f"https://{url}", data=json.dumps(args), headers=headers
+            )
+
+        return result
 
     def refresh(self):
         """
@@ -110,22 +223,40 @@ class iBroadcast(object):
         self.tags = util.decode(self.library["library"]["tags"])
         self.tracks = util.decode(self.library["library"]["tracks"])
 
-    def user_id(self):
+    def _download_md5s(self):
         """
-        Get the user_id for the current session.
-        """
-        return self.status["user"]["id"]
+        Download MD5 checksums for currently uploaded music files.
 
-    def token(self):
+        Raises:
+            ServerError on problem completing the request
         """
-        Get the authentication token for the current session.
+        self._log.info("Downloading MD5 checksums...")
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": self._user_agent,
+            "Authorization": f"Bearer {self._access_token}",
+        }
+        self.state = util.request(
+            self._log, "https://sync.ibroadcast.com", data="", headers=headers
+        )
+        self.md5 = set(self.state["md5"])
+
+    def get_status(self):
         """
-        return self.status["user"]["token"]
+        Fetch user status/info from the API.
+
+        Raises:
+            ServerError on problem completing the request
+        """
+        self.status = self._jsonrequest("status")
+        return self.status
 
     def extensions(self):
         """
         Get file extensions for supported audio formats.
         """
+        if self.status is None:
+            self.get_status()
         return [ft["extension"] for ft in self.status["supported"]]
 
     def isuploaded(self, filepath):
@@ -164,17 +295,20 @@ class iBroadcast(object):
         self._log.info(f"Uploading {label}")
 
         with open(filepath, "rb") as upload_file:
+            headers = {
+                "User-Agent": self._user_agent,
+                "Authorization": f"Bearer {self._access_token}",
+            }
             jsondata = util.request(
                 self._log,
                 "https://upload.ibroadcast.com",
                 data={
-                    "user_id": self.user_id(),
-                    "token": self.token(),
                     "client": self._client,
                     "version": self._version,
                     "file_path": filepath,
                     "method": self._client,
                 },
+                headers=headers,
                 files={"file": upload_file},
             )
             # The Track ID is embedded in result message; extract it.
