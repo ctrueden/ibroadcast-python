@@ -3,6 +3,7 @@
 
 import hashlib
 import requests
+from importlib.metadata import version as _version
 
 def calcmd5(filepath):
     with open(filepath, 'rb') as fh:
@@ -109,6 +110,8 @@ def request(log, url, data, content_type=None, files=None):
     if jsondata['result'] is False:
         raise ValueError('Operation failed.')
     return jsondata
+
+version = _version("ibroadcast")
 
 class ServerError(Exception):
     pass

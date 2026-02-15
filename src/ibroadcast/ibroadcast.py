@@ -2,8 +2,7 @@ import json
 import logging
 import re
 
-from .about import __version__
-from .util import *
+from . import util
 
 class iBroadcast(object):
     """
@@ -12,9 +11,9 @@ class iBroadcast(object):
     Adapted from ibroadcast-uploader.py at <https://project.ibroadcast.com/>.
     """
 
-    def __init__(self, username, password, log=None, client='ibroadcast-python', version=__version__):
-        self._client = client
-        self._version = version
+    def __init__(self, username, password, log=None, client=None, version=None):
+        self._client = client or "ibroadcast-python"
+        self._version = version or util.version
         self._log = log or logging.getLogger(client)
         self._login(username, password)
 
@@ -27,7 +26,7 @@ class iBroadcast(object):
             ServerError on problem logging in
         """
         self._log.info(f'Logging in as {username}...')
-        self.status = request(self._log,
+        self.status = util.request(self._log,
             "https://api.ibroadcast.com/s/JSON/status",
             data=json.dumps({
                 'mode': 'status',
@@ -52,7 +51,7 @@ class iBroadcast(object):
             ServerError on problem completing the request
         """
         self._log.info('Downloading MD5 checksums...')
-        self.state = request(self._log,
+        self.state = util.request(self._log,
             "https://sync.ibroadcast.com",
             data=f'user_id={self.user_id()}&token={self.token()}',
             content_type='application/x-www-form-urlencoded')
@@ -71,7 +70,7 @@ class iBroadcast(object):
         }
         args.update(kwargs)
         args['url'] = f'//{url}'
-        return request(self._log, f'https://{url}',
+        return util.request(self._log, f'https://{url}',
             data=json.dumps(args),
             content_type='application/json')
 
@@ -88,11 +87,11 @@ class iBroadcast(object):
 
         self._log.info('Downloading library data...')
         self.library = self._jsonrequest('library', url='library.ibroadcast.com')
-        self.albums = decode(self.library['library']['albums'])
-        self.artists = decode(self.library['library']['artists'])
-        self.playlists = decode(self.library['library']['playlists'])
-        self.tags = decode(self.library['library']['tags'])
-        self.tracks = decode(self.library['library']['tracks'])
+        self.albums = util.decode(self.library['library']['albums'])
+        self.artists = util.decode(self.library['library']['artists'])
+        self.playlists = util.decode(self.library['library']['playlists'])
+        self.tags = util.decode(self.library['library']['tags'])
+        self.tracks = util.decode(self.library['library']['tracks'])
 
     def user_id(self):
         """
@@ -123,7 +122,7 @@ class iBroadcast(object):
         """
         if not self.md5:
             self._download_md5s()
-        return calcmd5(filepath) in self.md5
+        return util.calcmd5(filepath) in self.md5
 
     def upload(self, filepath, label=None, force=False):
         """
@@ -148,7 +147,7 @@ class iBroadcast(object):
         self._log.info(f'Uploading {label}')
 
         with open(filepath, 'rb') as upload_file:
-            jsondata = request(self._log,
+            jsondata = util.request(self._log,
                 "https://upload.ibroadcast.com",
                 data={
                     'user_id': self.user_id(),
@@ -161,7 +160,7 @@ class iBroadcast(object):
                 files={'file': upload_file})
             # The Track ID is embedded in result message; extract it.
             message = jsondata['message'] if 'message' in jsondata else ''
-            match = re.match('.*\((.*)\) uploaded successfully.*', message)
+            match = re.match('.*\\((.*)\\) uploaded successfully.*', message)
             return None if match is None else match.group(1)
 
     def album(self, albumid):

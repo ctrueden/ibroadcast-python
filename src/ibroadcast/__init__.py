@@ -2,3 +2,4 @@
 # See https://unlicense.org/ for details.
 
 from .ibroadcast import iBroadcast
+from .util import version as __version__
