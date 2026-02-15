@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ibroadcast"
-version = "2.0.0.dev0"
+version = "2.0.0"
 description = "Python client for working with iBroadcast music collections"
 license = "Unlicense"
 authors = [{name = "Curtis Rueden", email = "curtis@rueden.us"}]
