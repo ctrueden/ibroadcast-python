@@ -2,7 +2,7 @@
 
 This Python package provides a client for working with
 [iBroadcast](https://www.ibroadcast.com/) music collections via the
-[iBroadcast REST API](https://help.ibroadcast.com/en/developer/api).
+[iBroadcast JSON API](https://help.ibroadcast.com/en/developer/api).
 
 ## Setup
 
