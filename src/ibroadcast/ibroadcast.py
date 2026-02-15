@@ -4,6 +4,7 @@ import re
 
 from . import util
 
+
 class iBroadcast(object):
     """
     Class for making iBroadcast requests.
@@ -11,7 +12,14 @@ class iBroadcast(object):
     Adapted from ibroadcast-uploader.py at <https://project.ibroadcast.com/>.
     """
 
-    def __init__(self, username, password, log=None, client=None, version=None):
+    def __init__(
+        self,
+        username,
+        password,
+        log=None,
+        client=None,
+        version=None,
+    ):
         self._client = client or "ibroadcast-python"
         self._version = version or util.version
         self._log = log or logging.getLogger(client)
@@ -25,22 +33,26 @@ class iBroadcast(object):
             ValueError on invalid login
             ServerError on problem logging in
         """
-        self._log.info(f'Logging in as {username}...')
-        self.status = util.request(self._log,
+        self._log.info(f"Logging in as {username}...")
+        self.status = util.request(
+            self._log,
             "https://api.ibroadcast.com/s/JSON/status",
-            data=json.dumps({
-                'mode': 'status',
-                'email_address': username,
-                'password': password,
-                'version': self._version,
-                'client': self._client,
-                'supported_types': 1,
-            }),
-            content_type='application/json')
-        if 'user' not in self.status:
-            raise ValueError('Invalid login.')
+            data=json.dumps(
+                {
+                    "mode": "status",
+                    "email_address": username,
+                    "password": password,
+                    "version": self._version,
+                    "client": self._client,
+                    "supported_types": 1,
+                }
+            ),
+            content_type="application/json",
+        )
+        if "user" not in self.status:
+            raise ValueError("Invalid login.")
 
-        self._log.info(f'Login successful - user_id: {self.user_id()}')
+        self._log.info(f"Login successful - user_id: {self.user_id()}")
         self.refresh()
 
     def _download_md5s(self):
@@ -50,29 +62,34 @@ class iBroadcast(object):
         Raises:
             ServerError on problem completing the request
         """
-        self._log.info('Downloading MD5 checksums...')
-        self.state = util.request(self._log,
+        self._log.info("Downloading MD5 checksums...")
+        self.state = util.request(
+            self._log,
             "https://sync.ibroadcast.com",
-            data=f'user_id={self.user_id()}&token={self.token()}',
-            content_type='application/x-www-form-urlencoded')
-        self.md5 = set(self.state['md5'])
+            data=f"user_id={self.user_id()}&token={self.token()}",
+            content_type="application/x-www-form-urlencoded",
+        )
+        self.md5 = set(self.state["md5"])
 
     def _jsonrequest(self, mode, url=None, **kwargs):
         if url is None:
-            url = f'api.ibroadcast.com/s/JSON/{mode}'
+            url = f"api.ibroadcast.com/s/JSON/{mode}"
         args = {
-            '_token': self.token(),
-            '_userid': self.user_id(),
-            'client': self._client,
-            'version': self._version,
-            'mode': mode,
-            'supported_types': False,
+            "_token": self.token(),
+            "_userid": self.user_id(),
+            "client": self._client,
+            "version": self._version,
+            "mode": mode,
+            "supported_types": False,
         }
         args.update(kwargs)
-        args['url'] = f'//{url}'
-        return util.request(self._log, f'https://{url}',
+        args["url"] = f"//{url}"
+        return util.request(
+            self._log,
+            f"https://{url}",
             data=json.dumps(args),
-            content_type='application/json')
+            content_type="application/json",
+        )
 
     def refresh(self):
         """
@@ -85,31 +102,31 @@ class iBroadcast(object):
         # Invalidate any previously downloaded MD5 checksums.
         self.md5 = None
 
-        self._log.info('Downloading library data...')
-        self.library = self._jsonrequest('library', url='library.ibroadcast.com')
-        self.albums = util.decode(self.library['library']['albums'])
-        self.artists = util.decode(self.library['library']['artists'])
-        self.playlists = util.decode(self.library['library']['playlists'])
-        self.tags = util.decode(self.library['library']['tags'])
-        self.tracks = util.decode(self.library['library']['tracks'])
+        self._log.info("Downloading library data...")
+        self.library = self._jsonrequest("library", url="library.ibroadcast.com")
+        self.albums = util.decode(self.library["library"]["albums"])
+        self.artists = util.decode(self.library["library"]["artists"])
+        self.playlists = util.decode(self.library["library"]["playlists"])
+        self.tags = util.decode(self.library["library"]["tags"])
+        self.tracks = util.decode(self.library["library"]["tracks"])
 
     def user_id(self):
         """
         Get the user_id for the current session.
         """
-        return self.status['user']['id']
+        return self.status["user"]["id"]
 
     def token(self):
         """
         Get the authentication token for the current session.
         """
-        return self.status['user']['token']
+        return self.status["user"]["token"]
 
     def extensions(self):
         """
         Get file extensions for supported audio formats.
         """
-        return [ft['extension'] for ft in self.status['supported']]
+        return [ft["extension"] for ft in self.status["supported"]]
 
     def isuploaded(self, filepath):
         """
@@ -141,26 +158,28 @@ class iBroadcast(object):
         if label is None:
             label = filepath
         if not force and self.isuploaded(filepath):
-            self._log.info(f'Skipping - already uploaded: {label}')
+            self._log.info(f"Skipping - already uploaded: {label}")
             return False
 
-        self._log.info(f'Uploading {label}')
+        self._log.info(f"Uploading {label}")
 
-        with open(filepath, 'rb') as upload_file:
-            jsondata = util.request(self._log,
+        with open(filepath, "rb") as upload_file:
+            jsondata = util.request(
+                self._log,
                 "https://upload.ibroadcast.com",
                 data={
-                    'user_id': self.user_id(),
-                    'token': self.token(),
-                    'client': self._client,
-                    'version': self._version,
-                    'file_path': filepath,
-                    'method': self._client,
+                    "user_id": self.user_id(),
+                    "token": self.token(),
+                    "client": self._client,
+                    "version": self._version,
+                    "file_path": filepath,
+                    "method": self._client,
                 },
-                files={'file': upload_file})
+                files={"file": upload_file},
+            )
             # The Track ID is embedded in result message; extract it.
-            message = jsondata['message'] if 'message' in jsondata else ''
-            match = re.match('.*\\((.*)\\) uploaded successfully.*', message)
+            message = jsondata["message"] if "message" in jsondata else ""
+            match = re.match(".*\\((.*)\\) uploaded successfully.*", message)
             return None if match is None else match.group(1)
 
     def album(self, albumid):
@@ -216,12 +235,12 @@ class iBroadcast(object):
         :param trackid: ID of the track in question.
         :return: True iff the track is tagged with that tag.
         """
-        if not tagid in self.tags:
+        if tagid not in self.tags:
             return False
         tag = self.tags[tagid]
-        if not 'tracks' in tag:
+        if "tracks" not in tag:
             return False
-        return int(trackid) in tag['tracks']
+        return int(trackid) in tag["tracks"]
 
     def gettags(self, trackid):
         """
@@ -230,7 +249,9 @@ class iBroadcast(object):
         :param trackid: ID of the track in question.
         :return: List of tag IDs.
         """
-        return [tagid for tagid, tag in self.tags.items() if self.istagged(tagid, trackid)]
+        return [
+            tagid for tagid, tag in self.tags.items() if self.istagged(tagid, trackid)
+        ]
 
     def createtag(self, tagname):
         """
@@ -242,8 +263,8 @@ class iBroadcast(object):
         Raises:
             ServerError on problem creating the tag
         """
-        jsondata = self._jsonrequest('createtag', tagname=tagname)
-        return jsondata['id']
+        jsondata = self._jsonrequest("createtag", tagname=tagname)
+        return jsondata["id"]
 
     def tagtracks(self, tagid, trackids, untag=False):
         """
@@ -256,9 +277,9 @@ class iBroadcast(object):
         Raises:
             ServerError on problem tagging/untagging the tracks
         """
-        self._jsonrequest('tagtracks', tagid=tagid, tracks=trackids, untag=untag)
+        self._jsonrequest("tagtracks", tagid=tagid, tracks=trackids, untag=untag)
 
-    def createplaylist(self, name, description='', sharable=False, mood=None):
+    def createplaylist(self, name, description="", sharable=False, mood=None):
         """
         Create a playlist.
 
@@ -272,10 +293,16 @@ class iBroadcast(object):
         Raises:
             ServerError on problem creating the playlist
         """
-        if mood not in ('Party', 'Dance', 'Workout', 'Relaxed', 'Chill'): mood = ''
-        jsondata = self._jsonrequest('createplaylist',
-            name=name, description=description, make_public=sharable, mood=mood)
-        return jsondata['playlist_id']
+        if mood not in ("Party", "Dance", "Workout", "Relaxed", "Chill"):
+            mood = ""
+        jsondata = self._jsonrequest(
+            "createplaylist",
+            name=name,
+            description=description,
+            make_public=sharable,
+            mood=mood,
+        )
+        return jsondata["playlist_id"]
 
     def deleteplaylist(self, playlistid):
         """
@@ -286,7 +313,7 @@ class iBroadcast(object):
         Raises:
             ServerError on problem deleting the playlist
         """
-        self._jsonrequest('deleteplaylist', playlist=playlistid)
+        self._jsonrequest("deleteplaylist", playlist=playlistid)
 
     def addtracks(self, playlistid, trackids):
         """
@@ -301,7 +328,7 @@ class iBroadcast(object):
         Raises:
             ServerError on problem updating the playlist
         """
-        self._jsonrequest('appendplaylist', playlist=playlistid, tracks=trackids)
+        self._jsonrequest("appendplaylist", playlist=playlistid, tracks=trackids)
 
     def settracks(self, playlistid, trackids):
         """
@@ -316,7 +343,7 @@ class iBroadcast(object):
         Raises:
             ServerError on problem updating the playlist
         """
-        self._jsonrequest('updateplaylist', playlist=playlistid, tracks=trackids)
+        self._jsonrequest("updateplaylist", playlist=playlistid, tracks=trackids)
 
     def trash(self, trackids):
         """
@@ -327,4 +354,4 @@ class iBroadcast(object):
         Raises:
             ServerError on problem trashing the tracks
         """
-        self._jsonrequest('trash', tracks=trackids)
+        self._jsonrequest("trash", tracks=trackids)

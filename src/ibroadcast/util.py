@@ -5,9 +5,11 @@ import hashlib
 import requests
 from importlib.metadata import version as _version
 
+
 def calcmd5(filepath):
-    with open(filepath, 'rb') as fh:
+    with open(filepath, "rb") as fh:
         return hashlib.md5(fh.read()).hexdigest()
+
 
 def decode(data):
     """
@@ -71,7 +73,7 @@ def decode(data):
        }
     """
 
-    if not 'map' in data or type(data['map']) is not dict:
+    if "map" not in data or type(data["map"]) is not dict:
         return data
 
     # NB: Lately iBroadcast's map object includes an entry:
@@ -80,7 +82,7 @@ def decode(data):
     #
     # Which is not immediately clear to me how to handle.
     # So for now, we ignore it (and similar) with an if clause.
-    keymap = {v: k for (k, v) in data['map'].items() if not isinstance(v, dict)}
+    keymap = {v: k for (k, v) in data["map"].items() if not isinstance(v, dict)}
 
     result = {}
     for k, v in data.items():
@@ -88,30 +90,32 @@ def decode(data):
             result[k] = {keymap[i]: v[i] for i in range(len(v))}
     return result
 
+
 def request(log, url, data, content_type=None, files=None):
     # TODO: Use kwargs properly here.
     if content_type and files:
-        response = requests.post(url, data=data, files=files,
-            headers={'Content-Type': content_type})
+        response = requests.post(
+            url, data=data, files=files, headers={"Content-Type": content_type}
+        )
     elif content_type:
-        response = requests.post(url, data=data,
-            headers={'Content-Type': content_type})
+        response = requests.post(url, data=data, headers={"Content-Type": content_type})
     elif files:
         response = requests.post(url, data=data, files=files)
     else:
         response = requests.post(url, data=data)
 
     if not response.ok:
-        raise ServerError('Server returned bad status: ',
-                         response.status_code)
+        raise ServerError("Server returned bad status: ", response.status_code)
     jsondata = response.json()
-    if 'message' in jsondata:
-        log.info(jsondata['message'])
-    if jsondata['result'] is False:
-        raise ValueError('Operation failed.')
+    if "message" in jsondata:
+        log.info(jsondata["message"])
+    if jsondata["result"] is False:
+        raise ValueError("Operation failed.")
     return jsondata
 
+
 version = _version("ibroadcast")
+
 
 class ServerError(Exception):
     pass
