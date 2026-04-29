@@ -237,7 +237,7 @@ class iBroadcast(object):
             "Authorization": f"Bearer {self._access_token}",
         }
         self.state = util.request(
-            self._log, "https://sync.ibroadcast.com", data="", headers=headers
+            self._log, "https://upload.ibroadcast.com", data="", headers=headers
         )
         self.md5 = set(self.state["md5"])
 
