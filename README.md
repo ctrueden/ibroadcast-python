@@ -1,5 +1,9 @@
 # iBroadcast Python client
 
+[![License](https://img.shields.io/pypi/l/ibroadcast.svg)](https://github.com/ctrueden/ibroadcast-python/raw/main/UNLICENSE)
+[![PyPI](https://img.shields.io/pypi/v/ibroadcast.svg)](https://pypi.org/project/ibroadcast)
+[![Python Version](https://img.shields.io/pypi/pyversions/ibroadcast.svg)](https://python.org)
+
 This Python package provides a client for working with
 [iBroadcast](https://www.ibroadcast.com/) music collections via the
 [iBroadcast JSON API](https://help.ibroadcast.com/en/developer/api).
